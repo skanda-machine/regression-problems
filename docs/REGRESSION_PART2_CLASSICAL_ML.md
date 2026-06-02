@@ -1,4 +1,4 @@
-upda# 📊 Regression Techout — Part 2: Classical ML
+# 📊 Regression Techout — Part 2: Classical ML
 ### Multiple Regression · Feature Engineering · Polynomial · Regularization · Metrics · Diagnostics
 > **Part of:** [Index](../REGRESSION_TECHOUT.md) · [Part 1](REGRESSION_PART1_FOUNDATIONS.md) · Part 2 · [Part 3](REGRESSION_PART3_MODERN_ML.md)  
 > **Audience:** L6+ AIML Engineer Preparation  
@@ -26,7 +26,7 @@ pip install numpy pandas scikit-learn statsmodels matplotlib seaborn torch light
 ### 🏫 School Intuition
 
 One input (impressions) was too simple. Real ad click prediction depends on **many signals**:  
-impressions + bid\_price + quality\_score + day\_of\_week + season → predicted clicks.  
+`impressions` + `bid_price` + `quality_score` + `day_of_week` + season → predicted clicks.  
 Each signal gets its own "weight" (slope). We're now fitting a **hyperplane** through multi-dimensional space instead of a line through 2D space.
 
 ### 📐 Math Formulation
@@ -37,7 +37,7 @@ $$
 
 **AdTech interpretation of each $\beta$:**
 - $\beta_1$ = incremental clicks per 1k impressions (holding all else constant)
-- $\beta_2$ = incremental clicks per $1 higher bid (holding all else constant)
+- $\beta_2$ = incremental clicks per \$1 higher bid (holding all else constant)
 - $\beta_3$ = incremental clicks per quality score point
 
 **Matrix form** (all $n$ campaign-days at once):
@@ -231,12 +231,12 @@ $$
 
 ```mermaid
 flowchart LR
-    A["Raw\nad_click_data_train.csv"] --> B["Parse date\n→ day_of_week, month,\nis_weekend, days_since_start"]
-    B --> C["One-Hot Encode\ndevice_type, match_type\n→ binary columns"]
-    C --> D["Target Encode\nadvertiser_id\n→ mean clicks per advertiser"]
+    A["Raw\nad_click_data_train.csv"] --> B["Parse date\nday_of_week, month,\nis_weekend, days_since_start"]
+    B --> C["One-Hot Encode\ndevice_type, match_type\nbinary columns"]
+    C --> D["Target Encode\nadvertiser_id\nmean clicks per advertiser"]
     D --> E["Scale\nbid_price, quality_score\nz-score on train stats"]
-    E --> F["Log transform\nimpressions\nlog(1+x)"]
-    F --> G["Assemble X\n[n × p] feature matrix"]
+    E --> F["Log transform\nimpressions\nlog1p(x)"]
+    F --> G["Assemble X\nn x p feature matrix"]
     G --> H["Ridge / LightGBM"]
 ```
 
@@ -320,7 +320,7 @@ LLMs automate feature engineering via:
 - **Embedding layer** → learned dense encoding (superior to manual one-hot for high-cardinality ad IDs)
 
 $$
-\mathbf{e}_{\text{advertiser}} = \mathbf{E} \cdot \mathbf{1}_{\text{advertiser\_id}} \in \mathbb{R}^d
+\mathbf{e}_{\text{advertiser}} = \mathbf{E} \cdot \mathbf{1}_{\text{adv\_id}} \in \mathbb{R}^d
 $$
 
 **Wide & Deep** (Google/Microsoft ad ranking) explicitly combines:
@@ -500,7 +500,7 @@ $$
 \boldsymbol{\beta}^*_{Ridge} = (\mathbf{X}^T\mathbf{X} + \lambda \mathbf{I})^{-1}\mathbf{X}^T\mathbf{y}
 $$
 
-> $\lambda \mathbf{I}$ **always makes the matrix invertible** — fixes multicollinearity between correlated ad features (e.g., `impressions` and `spend = impressions × bid`).
+> $\lambda \mathbf{I}$ **always makes the matrix invertible** — fixes multicollinearity between correlated ad features (e.g., `impressions` and `spend = impressions x bid`).
 
 **Lasso Regression (L1 penalty):**
 
@@ -522,9 +522,9 @@ $$
 
 ```mermaid
 flowchart LR
-    A["Unregularized\nβ_impressions=1200\nβ_spend=1198\n(both huge, cancel out)"] --> B["Ridge L2\nShrinks both toward 0\nNone exactly 0\n→ keeps all ad signals"]
-    A --> C["Lasso L1\nZeroes out weak features\n→ selects top ad drivers"]
-    B --> D["ElasticNet\nSparse + stable\n→ Bing Ads default"]
+    A["Unregularized\nb_impressions=1200\nb_spend=1198\nboth huge cancel out"] --> B["Ridge L2\nShrinks both toward 0\nNone exactly 0\nkeeps all ad signals"]
+    A --> C["Lasso L1\nZeroes out weak features\nselects top ad drivers"]
+    B --> D["ElasticNet\nSparse and stable\nBing Ads default"]
     C --> D
 ```
 
@@ -731,8 +731,8 @@ print(f"sMAPE         = {smape(y_actual, y_forecast):.2f}%  (handles low-click k
 > - **Offline training metric**: RMSE (differentiable, matches MSE loss gradient signal).  
 > - **Offline reporting metric**: MAPE (percentage error — the language advertisers understand for budget planning).  
 > - **Deployment gate**: MAE < 5% of campaign volume threshold before promotion to production.  
-> - **Online A/B KPI**: Revenue per query (RPQ) or click-through rate (CTR) — statistically significant improvement at p < 0.05 over 2-week holdout.  
-> - **The gap**: offline RMSE decrease doesn't always translate to online RPQ increase. **Always run online experiments**. This is the most common L6 interview trap.
+> - **Online A/B test**: 2-week holdout with randomized advertiser assignment; measure Revenue Per Query.  
+> - **Drift monitoring**: alert on PSI > 0.2 for impression distribution, weekly RMSE sliding window.
 
 ### ⚠️ Common Pitfalls
 
@@ -763,19 +763,19 @@ $$
 
 ```mermaid
 flowchart TD
-    A["Fit OLS on\nad_click_data"] --> B["Residuals vs Fitted\n(pattern = violated linearity)"]
+    A["Fit OLS on\nad_click_data"] --> B["Residuals vs Fitted\npattern = violated linearity"]
     B --> C{"Curved\npattern?"}
-    C -- Yes --> D["Log-transform impressions\nor add quality_score²"]
-    C -- No --> E["Scale-Location plot\n(heteroscedasticity)"]
+    C -- Yes --> D["Log-transform impressions\nor add quality score squared"]
+    C -- No --> E["Scale-Location plot\nheteroscedasticity"]
     E --> F{"Fan shape?"}
     F -- Yes --> G["WLS or\nlog-transform clicks"]
-    F -- No --> H["Durbin-Watson\n(temporal autocorrelation)"]
+    F -- No --> H["Durbin-Watson\ntemporal autocorrelation"]
     H --> I{"DW < 1.5 or > 2.5?"}
-    I -- Yes --> J["Add lag features\ny_{t-1}, y_{t-7}\nor use ARIMA"]
+    I -- Yes --> J["Add lag features\ny_lag1 y_lag7\nor use ARIMA"]
     I -- No --> K["VIF check\nmulticollinearity"]
     K --> L{"VIF > 10?"}
-    L -- Yes --> M["Drop spend if\nimpressions + bid already included\nor use Ridge"]
-    L -- No --> N["✅ OLS Assumptions Met\nModel is valid"]
+    L -- Yes --> M["Drop spend if\nimpressions and bid already included\nor use Ridge"]
+    L -- No --> N["OLS Assumptions Met\nModel is valid"]
 ```
 
 ### 🧑‍💻 Python — statsmodels OLS Diagnostics on Ad Click Data
